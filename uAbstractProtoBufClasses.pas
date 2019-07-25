@@ -40,7 +40,6 @@ type
 
     function LoadSingleFieldFromBuf(ProtoBuf: TProtoBufInput; FieldNumber: integer; WireType: integer): Boolean; virtual;
     procedure SaveFieldsToBuf(ProtoBuf: TProtoBufOutput); virtual;
-    procedure SaveMessageFieldToBuf(AField: TAbstractProtoBufClass; AFieldNumber: Integer; AFieldProtoBufOutput, AMainProtoBufOutput: TProtoBufOutput);
   public
     constructor Create; virtual;
     destructor Destroy; override;
@@ -55,6 +54,7 @@ type
     procedure SaveToBuf(ProtoBuf: TProtoBufOutput);
 
     function AllRequiredFieldsValid: Boolean;
+    procedure Clear();
 
     property FieldHasValue[Tag: Integer]: Boolean read GetFieldHasValue write SetFieldHasValue;
   end;
@@ -140,6 +140,11 @@ begin
   for pair in FFieldStates do
     FFieldStates.Items[pair.Key]:= pair.Value - [fsHasValue];
 {$ENDIF}
+end;
+
+procedure TAbstractProtoBufClass.Clear;
+begin
+  FFieldStates.Clear;
 end;
 
 procedure TAbstractProtoBufClass.ClearFieldState(Tag: Integer;
@@ -265,15 +270,6 @@ procedure TAbstractProtoBufClass.SaveFieldsToBuf(ProtoBuf: TProtoBufOutput);
 begin
   if not AllRequiredFieldsValid then
     raise EStreamError.CreateFmt('Saving %s: not all required fields have been set', [ClassName]);
-end;
-
-procedure TAbstractProtoBufClass.SaveMessageFieldToBuf(
-  AField: TAbstractProtoBufClass; AFieldNumber: Integer;
-  AFieldProtoBufOutput, AMainProtoBufOutput: TProtoBufOutput);
-begin
-  AFieldProtoBufOutput.Clear;
-  AField.SaveToBuf(AFieldProtoBufOutput);
-  AMainProtoBufOutput.writeMessage(AFieldNumber, AFieldProtoBufOutput);
 end;
 
 procedure TAbstractProtoBufClass.SaveToBuf(ProtoBuf: TProtoBufOutput);
