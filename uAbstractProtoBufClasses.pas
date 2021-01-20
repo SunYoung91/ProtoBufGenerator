@@ -8,7 +8,7 @@ uses
   {$IFDEF FPC}
   fgl,
   {$ELSE}
-  System.Generics.Collections,
+  Generics.Collections,
   {$ENDIF}
   pbInput,
   pbOutput;
@@ -29,8 +29,6 @@ type
     function GetFieldState(Tag: Integer): TFieldState;
     procedure AddFieldState(Tag: Integer; AFieldState: TFieldState);
     procedure ClearFieldState(Tag: Integer; AFieldState: TFieldState);
-    function GetFieldHasValue(Tag: Integer): Boolean;
-    procedure SetFieldHasValue(Tag: Integer; const Value: Boolean);
   strict protected
     procedure AddLoadedField(Tag: integer);
     procedure RegisterRequiredField(Tag: integer);
@@ -40,6 +38,7 @@ type
 
     function LoadSingleFieldFromBuf(ProtoBuf: TProtoBufInput; FieldNumber: integer; WireType: integer): Boolean; virtual;
     procedure SaveFieldsToBuf(ProtoBuf: TProtoBufOutput); virtual;
+    procedure SaveMessageFieldToBuf(AField: TAbstractProtoBufClass; AFieldNumber: Integer; AFieldProtoBufOutput, AMainProtoBufOutput: TProtoBufOutput);
   public
     constructor Create; virtual;
     destructor Destroy; override;
@@ -54,9 +53,7 @@ type
     procedure SaveToBuf(ProtoBuf: TProtoBufOutput);
 
     function AllRequiredFieldsValid: Boolean;
-    procedure Clear();
 
-    property FieldHasValue[Tag: Integer]: Boolean read GetFieldHasValue write SetFieldHasValue;
   end;
 
   {$IFDEF FPC}
@@ -142,11 +139,6 @@ begin
 {$ENDIF}
 end;
 
-procedure TAbstractProtoBufClass.Clear;
-begin
-  FFieldStates.Clear;
-end;
-
 procedure TAbstractProtoBufClass.ClearFieldState(Tag: Integer;
   AFieldState: TFieldState);
 begin
@@ -172,11 +164,6 @@ begin
   inherited;
 end;
 
-function TAbstractProtoBufClass.GetFieldHasValue(Tag: Integer): Boolean;
-begin
-  Result:= fsHasValue in GetFieldState(Tag);
-end;
-
 function TAbstractProtoBufClass.AllRequiredFieldsValid: Boolean;
 {$IFDEF FPC}
 var
@@ -191,12 +178,12 @@ var
   state: TFieldState;
 begin
   Result := True;
-  for state in FFieldStates.Values do
-    if state * [fsRequired, fsHasValue] = [fsRequired] then
-    begin
-      Result:= False;
-      Break;
-    end;
+//  for state in FFieldStates.Values do
+//    if state * [fsRequired, fsHasValue] = [fsRequired] then
+//    begin
+//      Result:= False;
+//      Break;
+//    end;
 {$ENDIF}
 end;
 
@@ -272,6 +259,15 @@ begin
     raise EStreamError.CreateFmt('Saving %s: not all required fields have been set', [ClassName]);
 end;
 
+procedure TAbstractProtoBufClass.SaveMessageFieldToBuf(
+  AField: TAbstractProtoBufClass; AFieldNumber: Integer;
+  AFieldProtoBufOutput, AMainProtoBufOutput: TProtoBufOutput);
+begin
+  AFieldProtoBufOutput.Clear;
+  AField.SaveToBuf(AFieldProtoBufOutput);
+  AMainProtoBufOutput.writeMessage(AFieldNumber, AFieldProtoBufOutput);
+end;
+
 procedure TAbstractProtoBufClass.SaveToBuf(ProtoBuf: TProtoBufOutput);
 begin
   SaveFieldsToBuf(ProtoBuf);
@@ -288,14 +284,6 @@ begin
   finally
     pb.Free;
   end;
-end;
-
-procedure TAbstractProtoBufClass.SetFieldHasValue(Tag: Integer;
-  const Value: Boolean);
-begin
-  if Value then
-    AddFieldState(Tag, [fsHasValue]) else
-    ClearFieldState(Tag, [fsHasValue]);
 end;
 
 { TProtoBufList<T> }

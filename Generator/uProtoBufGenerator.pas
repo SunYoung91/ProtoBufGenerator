@@ -466,7 +466,20 @@ procedure TProtoBufGenerator.GenerateImplementationSection(Proto: TProtoFile; SL
         if Prop.PropKind = ptOneOf then
           Continue;
 
-        SL.Add(Format('  if FieldHasValue[%s] then', [DelphiProp.tagName]));
+        if DelphiProp.IsList then
+          SL.Add(Format('  if F%s.Count > 0 then', [DelphiProp.PropertyName]))
+        else
+        begin
+          if DelphiProp.isObject then
+          begin
+            SL.Add('  if True then');
+          end else
+          begin
+            SL.Add(Format('  if FDefault_%s <> %s  then', [DelphiProp.PropertyName,DelphiProp.PropertyName]));
+          end;
+        end;
+
+
         if not DelphiProp.IsList then
           begin
             if not DelphiProp.isComplex then
@@ -477,10 +490,7 @@ procedure TProtoBufGenerator.GenerateImplementationSection(Proto: TProtoFile; SL
               else
                 begin
                   bNeedtmpBuf:= True;
-                  SL.Add(       '  begin');
-                  SL.Add(Format('    F%s.SaveToBuf(tmpBuf);', [DelphiProp.PropertyName]));
-                  SL.Add(Format('    ProtoBuf.writeMessage(%s, tmpBuf);', [DelphiProp.tagName]));
-                  SL.Add(       '  end;');
+                  SL.Add(Format('    SaveMessageFieldToBuf(F%s, %s, tmpBuf, ProtoBuf);', [DelphiProp.PropertyName, DelphiProp.tagName]));
                 end;
           end
         else
@@ -492,6 +502,7 @@ procedure TProtoBufGenerator.GenerateImplementationSection(Proto: TProtoFile; SL
                     bNeedtmpBuf:= True;
                     bNeedCounterVar:= True;
                     SL.Add(       '  begin');
+                    SL.Add(       '    tmpBuf.Clear;');
                     SL.Add(Format('    for i := 0 to F%s.Count-1 do', [DelphiProp.PropertyName]));
                     SL.Add(Format('      tmpBuf.write%s(F%s[i]);', [GetProtoBufMethodForScalarType(Prop), DelphiProp.PropertyName]));
                     SL.Add(Format('    ProtoBuf.writeMessage(%s, tmpBuf);', [DelphiProp.tagName]));
@@ -512,6 +523,7 @@ procedure TProtoBufGenerator.GenerateImplementationSection(Proto: TProtoFile; SL
                       bNeedtmpBuf:= True;
                       bNeedCounterVar:= True;
                       SL.Add(       '  begin');
+                      SL.Add(       '    tmpBuf.Clear;');
                       SL.Add(Format('    for i := 0 to F%s.Count-1 do', [DelphiProp.PropertyName]));
                       SL.Add(Format('      tmpBuf.writeRawVarint32(Integer(F%s[i]));', [DelphiProp.PropertyName]));
                       SL.Add(Format('    ProtoBuf.writeMessage(%s, tmpBuf);', [DelphiProp.tagName]));
@@ -599,7 +611,9 @@ procedure TProtoBufGenerator.GenerateImplementationSection(Proto: TProtoFile; SL
             ParsePropType(Prop.OneOfPropertyParent, Proto, OneOfDelphiProp);
             SL.Add(Format('  %s:= %s_%s_%s;', [OneOfDelphiProp.PropertyName, ProtoMsg.Name, OneOfDelphiProp.PropertyName, DelphiProp.PropertyName]));
           end else
-            SL.Add('  FieldHasValue[Tag]:= True;');
+          begin
+            //SL.Add('  FieldHasValue[Tag]:= True;');    //È¥µô tag
+          end;
         end;
         SL.Add('end;');
         SL.Add('');
@@ -677,6 +691,7 @@ var
     Prop, OneOfProp: TProtoBufProperty;
     DelphiProp, OneOfDelphiProp: TDelphiProperty;
     s, sdefValue: string;
+    isFind : Boolean;
   begin
     if ProtoMsg.IsImported then
       Exit;
@@ -721,7 +736,7 @@ var
       SL[SL.Count - 1]:= Copy(s, 1, Length(s) - 1);
       SL.Add('    );');
     end;
-    SL.Add('  strict private');
+    SL.Add('  strict protected');
     //field definitions
     for i := 0 to ProtoMsg.Count - 1 do
       begin
@@ -729,6 +744,49 @@ var
         ParsePropType(Prop, Proto, DelphiProp);
         SL.Add(Format('    F%s: %s;', [DelphiProp.PropertyName, DelphiProp.PropertyType]));
       end;
+
+    SL.Add('    //default value');
+    //write default value
+    for i := 0 to ProtoMsg.Count - 1 do
+    begin
+      Prop := ProtoMsg[i];
+      ParsePropType(Prop, Proto, DelphiProp);
+
+      if DelphiProp.IsList or DelphiProp.isObject then
+        Continue;
+
+      if Prop.PropOptions.HasValue['default'] then
+        SL.Add(Format('   const FDefault_%s = %s;', [DelphiProp.PropertyName,  ReQuoteStr(Prop.PropOptions.Value['default'])]))
+      else
+      begin
+        isFind := False;
+
+        if DelphiProp.PropertyType = 'string' then
+        begin
+          SL.Add(Format('   const FDefault_%s = '''';', [DelphiProp.PropertyName]));
+          isFind := True;
+        end;
+
+        if (not isFind) and (DelphiProp.PropertyType = 'Cardinal') or (DelphiProp.PropertyType = 'Integer') or (DelphiProp.PropertyType = 'Double') or (DelphiProp.PropertyType = 'UInt64')  or (DelphiProp.PropertyType = 'Int64') then
+        begin
+          SL.Add(Format('   const FDefault_%s = 0;', [DelphiProp.PropertyName]));
+          isFind := True;
+        end;
+
+        if (not isFind) and (DelphiProp.PropertyType = 'Boolean') then
+        begin
+          isFind := True;
+          SL.Add(Format('   const FDefault_%s = False;', [DelphiProp.PropertyName]));
+        end;
+
+        if not isFind then
+        begin
+          raise Exception.Create('defalut value not done with Delphi Type :' +  DelphiProp.PropertyType + ', Name :' + DelphiProp.PropertyName  + ',Message : ' + ProtoMsg.Name);
+        end;
+      end;
+
+    end;
+
     SL.Add('');
     //property setters
     for i := 0 to ProtoMsg.Count - 1 do

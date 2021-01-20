@@ -16,9 +16,8 @@ unit StrBuffer;
 interface
 
 uses
-  Classes,Math,
+  Classes,
   SysUtils;
-
 
 const
   MaxBuffSize = Maxint div 16;
@@ -76,7 +75,6 @@ type
     constructor Create;
     destructor Destroy; override;
     procedure SaveToStream(Stream: TStream);
-    function SaveToMem(Ptr:Pointer;Size:Integer):Integer;
     procedure SaveToFile(const FileName: string);
     procedure LoadFromFile(const FileName: string);
     procedure LoadFromStream(Stream: TStream);
@@ -349,33 +347,6 @@ begin
   finally
     Stream.Free;
   end;
-end;
-
-function TSegmentBuffer.SaveToMem(Ptr: Pointer; Size:Integer): Integer;
-var
-  segment: PSegment;
-  NowPtr : PByte;
-  WriteCount : Integer;
-begin
-  segment := FFirst;
-  NowPtr := Ptr;
-  Result := 0;
-
-  if Size <= 0 then
-    Exit;
-
-  while segment <> nil do
-    begin
-      WriteCount := Min(Size,segment^.Count);
-      Move(segment^.Data[0],NowPtr^,WriteCount);
-      Dec(Size,WriteCount);
-      Inc(Result,WriteCount);
-      Inc(NowPtr,WriteCount);
-
-      if Size <= 0 then
-        Break;
-      segment := segment^.Next;
-    end;
 end;
 
 procedure TSegmentBuffer.SaveToStream(Stream: TStream);

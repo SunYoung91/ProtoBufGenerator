@@ -529,7 +529,7 @@ begin
   SkipRequiredChar(Proto, iPos, '{');
   TempComments:= TStringList.Create;
   try
-    //TempComments.TrailingLineBreak:= False;
+    TempComments.TrailingLineBreak:= False;
     while Proto[iPos] <> '}' do
       begin
         TempComments.Clear;
@@ -617,7 +617,7 @@ begin
   SkipRequiredChar(Proto, iPos, '{');
   TempComments:= TStringList.Create;
   try
-    //TempComments.TrailingLineBreak:= False;
+    TempComments.TrailingLineBreak:= False;
     while (Proto[iPos] <> '}') or (OneOfPropertyParent <> nil) do
       begin
         if (OneOfPropertyParent <> nil) and (Proto[iPos] = '}') then
@@ -785,7 +785,7 @@ begin
   // parse .proto package name
   TempComments:= TStringList.Create;
   try
-    //TempComments.TrailingLineBreak:= False;
+    TempComments.TrailingLineBreak:= False;
     while iPos < Length(Proto) do
       begin
         SkipWhitespaces(Proto, iPos);

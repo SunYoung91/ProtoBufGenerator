@@ -63,7 +63,7 @@ begin
   inherited Create;
   FRoot := ARoot;
   FComments:= TStringList.Create;
-  //FComments.TrailingLineBreak:= False;
+  FComments.TrailingLineBreak:= False;
 end;
 
 destructor TAbstractProtoBufParserItem.Destroy;
@@ -87,7 +87,7 @@ begin
   inherited Create(True);
   FRoot := ARoot;
   FComments := TStringList.Create;
-  //FComments.TrailingLineBreak:= False;
+  FComments.TrailingLineBreak:= False;
 end;
 
 destructor TAbstractProtoBufParserContainer<T>.Destroy;

@@ -72,7 +72,6 @@ type
     function getSerializedSize: integer;
     (* Write to buffer *)
     procedure writeTo(buffer: TProtoBufOutput);
-    function writeToMem(Ptr:Pointer;Size:Integer):Integer;
   end;
 
 function EncodeZigZag32(const A: LongInt): LongWord;
@@ -313,11 +312,6 @@ end;
 procedure TProtoBufOutput.writeTo(buffer: TProtoBufOutput);
 begin
   buffer.FBuffer.Add(GetText);
-end;
-
-function TProtoBufOutput.writeToMem(Ptr: Pointer; Size: Integer): Integer;
-begin
-  Result := FBuffer.SaveToMem(Ptr,Size);
 end;
 
 end.
